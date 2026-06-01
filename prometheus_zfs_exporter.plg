@@ -1,0 +1,86 @@
+<?xml version='1.0' standalone='yes'?>
+<!DOCTYPE PLUGIN [
+  <!ENTITY name      "prometheus_zfs_exporter">
+  <!ENTITY author    "ashtoruin">
+  <!ENTITY version   "2026.06.01">
+  <!ENTITY gitURL    "https://github.com/&author;/unraid-&name;/raw/main">
+  <!ENTITY pluginURL "&gitURL;/&name;.plg">
+  <!ENTITY md5       "656a77c0dd6bdf19a0b96edf26561e40">
+  <!ENTITY plugin    "/boot/config/plugins/&name;">
+  <!ENTITY emhttp    "/usr/local/emhttp/plugins/&name;">
+]>
+
+<PLUGIN  name="&name;" author="&author;" version="&version;" pluginURL="&pluginURL;" min="6.9.0" support="tbd">
+
+<CHANGES>
+
+###2026.06.01
+- Initial release - based on version v2.3.12
+
+</CHANGES>
+
+<FILE Run="/bin/bash">
+<INLINE>
+rm -f $(ls /boot/config/plugins/&name;/&name;*.tgz 2>/dev/null|grep -v '&version;')
+</INLINE>
+</FILE>
+
+<FILE Name="/boot/config/plugins/&name;/&name;-&version;.tgz" Run="upgradepkg --install-new">
+<URL>&gitURL;/packages/&name;-&version;.tgz</URL>
+<MD5>&md5;</MD5>
+</FILE>
+
+<FILE Name="&emhttp;/README.md">
+<INLINE>
+**Prometheus ZFS Exporter**
+
+Is a slim plugin, that takes informations gathered about your unraid ZFS filesystems and provides it to a Prometheus database. 
+Export URL: The URL for the exportet metrics is: 'http://YOURunRAIDIP:9134/metrics' (to use it in Prometheus add the target: 'YOURunRAIDIP:9134' to your Prometheus yaml).  
+This Plugin is based on zfs_exporter: https://github.com/pdf/zfs_exporter
+</INLINE>
+</FILE>
+
+<FILE Run="/bin/bash">
+<INLINE>
+
+#Create settings file if not found
+if [ ! -f "&plugin;/settings.cfg" ]; then
+  echo 'start_parameters=' > "&plugin;/settings.cfg"
+fi
+
+if [ -z "$(pidof prometheus_zfs_exporter)" ]; then
+  START_PARAMS="$(cat &plugin;/settings.cfg | cut -d '=' -f2-)"
+  echo "-------------Starting Prometheus ZFS Exporter!--------------"
+  if [ -z "$START_PARAMS" ]; then
+    echo "/usr/bin/prometheus_zfs_exporter" | at now
+  else
+    echo "/usr/bin/prometheus_zfs_exporter "$START_PARAMS"" | at now
+  fi
+else
+  echo
+  echo "---Nothing to do, Prometheus ZFS Exporter already started---"
+fi
+
+</INLINE>
+</FILE>
+
+<FILE Run="/bin/bash" Method="remove">
+<INLINE>
+
+echo "-------------------------------------------"
+echo "---Uninstalling prometheus_zfs_exporter---"
+echo "-------------------------------------------"
+# Remove plugin related files
+kill $(pidof prometheus_zfs_exporter) 2>/dev/null
+removepkg &name;-&version;
+rm -rf /usr/local/emhttp/plugins/&name;
+rm -rf &plugin;
+echo
+echo "----------------------------------------------------------"
+echo "---Uninstallation of prometheus_zfs_exporter complete!---"
+echo "----------------------------------------------------------"
+echo
+
+</INLINE>
+</FILE>
+</PLUGIN>
